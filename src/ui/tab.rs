@@ -10,12 +10,13 @@ pub struct Tab {
 impl Tab {
     pub fn new(name: String) -> Self {
         let seq = crate::scripting::KeySequence::new(vec![
-            crate::scripting::Action::Wait(crate::time::Delay::new(1.)),
+            crate::scripting::Action::Wait(crate::time::Delay::new(10.)),
             crate::scripting::Action::Wait(crate::time::Delay::new(1.)),
             crate::scripting::Action::MouseMovement(
                 crate::scripting::CursorMovementMode::Relative,
                 (1000, 0),
             ),
+            crate::scripting::Action::Stop,
         ]);
 
         let runner = crate::scripting::runner::RunnerHandle::new();
@@ -47,8 +48,9 @@ impl Tab {
                     crate::scripting::runner::RunnerMessage::Goodbye => {
                         println!("The runner thread {} exited", self.name)
                     }
-                    crate::scripting::runner::RunnerMessage::CrusorUpdate(id) => {
-                        self.current_action_index = id;
+                    crate::scripting::runner::RunnerMessage::CrusorUpdate(cursor) => {
+                        println!("Tab cursor updated to {cursor}");
+                        self.current_action_index = cursor;
                     }
                     _ => {
                         println!("Unexpected thread message: {msg:?}")
@@ -79,7 +81,6 @@ impl Tab {
             spacer with size of width -  truc a gauche size - liste size
             liste
         */
-
         let scrollbar_rect_id = ui.id().with("right_rect_scrollbar");
 
         let last_width: Option<f32> = ui.memory_mut(|mem| mem.data.get_temp(scrollbar_rect_id));
@@ -187,7 +188,6 @@ impl Tab {
             if ui.button("Move1").clicked() {
                 self.current_action_index =
                     (self.current_action_index + 1) % (self.key_sequence.actions().len() - 1);
-                // println!("{}",)
             }
         });
     }

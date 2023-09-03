@@ -77,17 +77,23 @@ impl RunnerThread {
         let Some(seq) =  &mut self.current_sequence else{
             return;
         };
-        if let Err(e) = self.channel.send(RunnerMessage::CrusorUpdate(seq.cursor())) {
-            println!("Encoutered an error while sending CrusorUpdate to main thread: {e:?}");
-            self.running = false
-        }
 
         if let Err(e) = seq.run_one() {
             println!(
                 "Runner {} encountered the error: {e:?}\nWhile running sequence {seq:#?}",
                 self.name,
             );
-            self.running = false;
+            self.current_sequence = None
+        }
+    }
+    fn update_tab(&mut self) {
+        let Some(seq) =  &self.current_sequence else{
+            return;
+        };
+
+        if let Err(e) = self.channel.send(RunnerMessage::CrusorUpdate(seq.cursor())) {
+            println!("Encoutered an error while sending CrusorUpdate to main thread: {e:?}");
+            self.running = false
         }
     }
 
@@ -95,6 +101,7 @@ impl RunnerThread {
         while self.running {
             self.handle_channel();
             self.run_sequence();
+            self.update_tab()
         }
 
         self.exit()
