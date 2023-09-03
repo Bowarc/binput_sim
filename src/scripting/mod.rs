@@ -57,7 +57,7 @@ impl KeySequence {
             },
             Action::Stop => self.requested_stop = true,
         }
-        println!("Succesfully ran action at cursor {}", self.cursor);
+        trace!("Succesfully ran action at cursor {}", self.cursor);
 
         if !self.requested_stop {
             self.cursor += 1;

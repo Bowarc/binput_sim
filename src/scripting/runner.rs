@@ -1,7 +1,10 @@
 #[derive(PartialEq, Debug)]
 pub enum RunnerMessage {
-    NewSequence(crate::scripting::KeySequence),
+    SetSequence(crate::scripting::KeySequence),
+    StartSequence,
+    StopSequence,
     CleanSequence,
+    ResetCurrentSequenceCursor,
     CrusorUpdate(usize), // pos
     Goodbye,
 }
@@ -30,7 +33,7 @@ impl RunnerHandle {
         let handle = std::thread::Builder::new()
             .name(name.clone())
             .spawn(move || {
-                println!("A runner with id '{n}' has been created");
+                debug!("A runner with id '{n}' has been created");
                 let mut thread = RunnerThread::new(channel2, n);
                 thread.run()
             })
@@ -59,20 +62,26 @@ impl RunnerThread {
     fn handle_channel(&mut self) {
         match self.channel.try_recv() {
             Ok(msg) => {
-                println!("Thread received a new message: {msg:?}");
+                trace!("Thread received a new message: {msg:?}");
 
                 match msg {
-                    RunnerMessage::NewSequence(seq) => self.run_new_sequence(seq),
+                    RunnerMessage::SetSequence(seq) => self.set_sequence_without_running(seq),
                     RunnerMessage::CleanSequence => self.delete_current_sequence(),
-
-                    _ => println!("Unhandled message: {msg:?}"),
+                    RunnerMessage::StartSequence => {
+                        if self.current_sequence.is_some() {
+                            self.run_current_sequence().unwrap();
+                        } else {
+                            error!("Runner {} tried to start a None sequence", self.name)
+                        }
+                    }
+                    _ => warn!("Unhandled message: {msg:?}"),
                 }
             }
             Err(e) if e == std::sync::mpsc::TryRecvError::Empty => {
                 // println!("Would block");
             }
             Err(e) => {
-                println!("Unknown error: {e:?}");
+                error!("Unknown runner error: {e:?}");
                 self.requested_stop = true;
             }
         }
@@ -80,6 +89,15 @@ impl RunnerThread {
 
     fn set_sequence_without_running(&mut self, seq: super::KeySequence) {
         self.current_sequence = Some(seq);
+    }
+
+    fn run_current_sequence(&mut self) -> Result<(), ()> {
+        if self.current_sequence.is_some() {
+            self.sequence_running = true;
+            Ok(())
+        } else {
+            Err(())
+        }
     }
 
     fn run_new_sequence(&mut self, seq: super::KeySequence) {
@@ -108,7 +126,7 @@ impl RunnerThread {
         }
 
         if let Err(e) = seq.run_one() {
-            println!(
+            error!(
                 "Runner {} encountered the error: {e:?}\nWhile running sequence {seq:#?}",
                 self.name,
             );
@@ -122,7 +140,7 @@ impl RunnerThread {
         };
 
         if let Err(e) = self.channel.send(RunnerMessage::CrusorUpdate(seq.cursor())) {
-            println!("Encoutered an error while sending CrusorUpdate to main thread: {e:?}");
+            error!("Encoutered an error while sending CrusorUpdate to main thread: {e:?}");
             self.requested_stop = true
         }
     }
@@ -146,6 +164,6 @@ impl RunnerThread {
     fn exit(&mut self) {
         self.delete_current_sequence();
         let _ = self.channel.send(RunnerMessage::Goodbye);
-        println!("Exiting thread {}", self.name);
+        debug!("Exiting thread {}", self.name);
     }
 }

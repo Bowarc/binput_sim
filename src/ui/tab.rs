@@ -46,14 +46,14 @@ impl Tab {
             match self.runner_handle.thread_channel.try_recv() {
                 Ok(msg) => match msg {
                     crate::scripting::runner::RunnerMessage::Goodbye => {
-                        println!("The runner thread {} exited", self.name)
+                        debug!("The runner thread {} exited", self.name)
                     }
                     crate::scripting::runner::RunnerMessage::CrusorUpdate(cursor) => {
-                        println!("Tab cursor updated to {cursor}");
+                        trace!("Tab cursor updated to {cursor}");
                         self.current_action_index = cursor;
                     }
                     _ => {
-                        println!("Unexpected thread message: {msg:?}")
+                        warn!("Unexpected thread message: {msg:?}")
                     }
                 },
                 Err(e) => match e {
@@ -95,6 +95,21 @@ impl Tab {
                 r
             },
             |ui| {
+                if ui.button("Run sequence").clicked() {
+                    debug!("Sending a request to the runner");
+                    self.runner_handle
+                        .thread_channel
+                        .send(crate::scripting::runner::RunnerMessage::SetSequence(
+                            self.key_sequence.clone(),
+                        ))
+                        .unwrap();
+
+                    self.runner_handle
+                        .thread_channel
+                        .send(crate::scripting::runner::RunnerMessage::StartSequence)
+                        .unwrap()
+                }
+
                 let res = ui
                     .group(|ui| {
                         eframe::egui::ScrollArea::both()
@@ -107,7 +122,7 @@ impl Tab {
                                 for (i, action) in self.key_sequence.actions().iter().enumerate() {
                                     let mut text = match action {
                                         crate::scripting::Action::Wait(d) => {
-                                            format!("Delay {}ms", d.as_millis())
+                                            format!("Delay {d}")
                                         }
                                         crate::scripting::Action::KeyPress(key) => {
                                             format!("Key({key:?}) press")

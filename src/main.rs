@@ -1,11 +1,17 @@
+#[macro_use]
+extern crate log;
+
 mod error;
 mod input;
+mod logger;
 mod scripting;
 mod threading;
 mod time;
 mod ui;
 
 fn main() {
+    logger::init(None);
+
     let options = eframe::NativeOptions {
         initial_window_size: Some(eframe::egui::vec2(1000.0, 750.0)), /*x800y450 is 16:9*/
         resizable: true,
