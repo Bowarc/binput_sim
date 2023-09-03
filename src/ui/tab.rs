@@ -19,14 +19,14 @@ impl Tab {
             crate::scripting::Action::Stop,
         ]);
 
-        let runner = crate::scripting::runner::RunnerHandle::new();
+        let runner = crate::scripting::runner::RunnerHandle::new(name.clone());
 
-        runner
-            .thread_channel
-            .send(crate::scripting::runner::RunnerMessage::NewSequence(
-                seq.clone(),
-            ))
-            .unwrap();
+        // runner
+        //     .thread_channel
+        //     .send(crate::scripting::runner::RunnerMessage::NewSequence(
+        //         seq.clone(),
+        //     ))
+        //     .unwrap();
 
         Self {
             test_str: name.clone(),

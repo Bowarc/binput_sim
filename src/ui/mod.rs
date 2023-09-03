@@ -10,7 +10,7 @@ impl Ui {
     pub fn new() -> Self {
         let tabs = vec![
             tab::Tab::new(String::from("Tab1")),
-            // tab::Tab::new(String::from("Tab2")),
+            tab::Tab::new(String::from("Tab2")),
         ];
 
         Self {

@@ -27,9 +27,11 @@ impl KeySequence {
 
     pub fn run_one(&mut self) -> Result<(), crate::error::Error> {
         if self.requested_stop {
-            return Err(crate::error::Error::TestError(
-                "Script has requested exec stop".to_string(),
-            ));
+            // return Err(crate::error::Error::TestError(
+            //     "Script has requested exec stop".to_string(),
+            // ));
+
+            return Ok(());
         }
         let current_action = self
             .seq
