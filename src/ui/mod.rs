@@ -135,6 +135,7 @@ impl Ui {
 
         let current_tab = self.tabs.get_mut(self.current_tab_index).unwrap();
 
+        current_tab.update();
         current_tab.draw(ui);
     }
 }

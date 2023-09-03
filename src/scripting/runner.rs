@@ -1,19 +1,29 @@
 #[derive(PartialEq, Debug)]
 pub enum RunnerMessage {
     SetSequence(crate::scripting::KeySequence),
+    SequenceSet,
+
     StartSequence,
+    SequenceStarted,
+
     StopSequence,
+    SequenceStopped,
+
     CleanSequence,
+    SequenceDeleted,
+
     ResetCurrentSequenceCursor,
+    SequenceCursorResetted,
+
     CrusorUpdate(usize), // pos
     Goodbye,
 }
 
 pub struct RunnerHandle {
-    pub joinhandle: std::thread::JoinHandle<()>,
-    pub thread_channel: crate::threading::Channel<RunnerMessage>,
-    pub name: String,
-    pub key_sequence_running: bool,
+    joinhandle: std::thread::JoinHandle<()>,
+    thread_channel: crate::threading::Channel<RunnerMessage>,
+    name: String,
+    key_sequence_running: bool,
 }
 
 pub struct RunnerThread {
@@ -22,6 +32,11 @@ pub struct RunnerThread {
     name: String,
     sequence_running: bool,
     requested_stop: bool,
+}
+
+pub struct RunnerState {
+    current_sequence: super::KeySequence,
+    running: bool,
 }
 
 impl RunnerHandle {
@@ -45,6 +60,56 @@ impl RunnerHandle {
             name,
             key_sequence_running: false,
         }
+    }
+
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+    pub fn send(
+        &mut self,
+        msg: RunnerMessage,
+    ) -> Result<(), std::sync::mpsc::SendError<RunnerMessage>> {
+        // if msg == RunnerMessage::StartSequence {
+        //     self.key_sequence_running = true;
+        // }
+
+        self.thread_channel.send(msg)
+    }
+    pub fn try_recv(&mut self) -> Result<RunnerMessage, std::sync::mpsc::TryRecvError> {
+        let res = self.thread_channel.try_recv();
+
+        if let Ok(msg) = &res {
+            match msg {
+                RunnerMessage::SequenceSet => {
+                    debug!("Runner has succesfully set the requested sequence");
+                    // self.sequence_sync = true
+                }
+                RunnerMessage::SequenceStarted => {
+                    debug!("Runner has started its sequence");
+                    self.key_sequence_running = true;
+                }
+                RunnerMessage::SequenceStopped => {
+                    debug!("Runner's sequence has stopped");
+                    self.key_sequence_running = false;
+                }
+                RunnerMessage::SequenceDeleted => {
+                    debug!("Runner has deleted its sequence");
+                    // self.sequence_sync = false
+                }
+                RunnerMessage::SequenceCursorResetted => {
+                    debug!("Runner has reset its sequence cursor");
+                }
+                RunnerMessage::Goodbye => {
+                    debug!("Runner has exited");
+                }
+                _ => {}
+            }
+        }
+
+        res
+    }
+    pub fn is_runner_running(&self) -> bool {
+        self.key_sequence_running
     }
 }
 
@@ -74,6 +139,7 @@ impl RunnerThread {
                             error!("Runner {} tried to start a None sequence", self.name)
                         }
                     }
+                    RunnerMessage::StopSequence => self.stop_current_sequence(),
                     _ => warn!("Unhandled message: {msg:?}"),
                 }
             }
@@ -89,11 +155,13 @@ impl RunnerThread {
 
     fn set_sequence_without_running(&mut self, seq: super::KeySequence) {
         self.current_sequence = Some(seq);
+        self.channel.send(RunnerMessage::SequenceSet).unwrap();
     }
 
     fn run_current_sequence(&mut self) -> Result<(), ()> {
         if self.current_sequence.is_some() {
             self.sequence_running = true;
+            self.channel.send(RunnerMessage::SequenceStarted).unwrap();
             Ok(())
         } else {
             Err(())
@@ -102,16 +170,21 @@ impl RunnerThread {
 
     fn run_new_sequence(&mut self, seq: super::KeySequence) {
         self.current_sequence = Some(seq);
+        self.channel.send(RunnerMessage::SequenceSet).unwrap();
         self.sequence_running = true;
+        self.channel.send(RunnerMessage::SequenceStarted).unwrap();
     }
 
     fn stop_current_sequence(&mut self) {
         self.sequence_running = false;
+        self.channel.send(RunnerMessage::SequenceStopped).unwrap();
     }
 
     fn delete_current_sequence(&mut self) {
         self.current_sequence = None;
+        self.channel.send(RunnerMessage::SequenceDeleted).unwrap();
         self.sequence_running = false;
+        self.channel.send(RunnerMessage::SequenceStopped).unwrap();
     }
 
     fn run_sequence(&mut self) {
@@ -120,7 +193,7 @@ impl RunnerThread {
             return;
         };
 
-        if seq.requested_stop {
+        if seq.requested_stop() {
             self.stop_current_sequence();
             return;
         }
@@ -150,11 +223,11 @@ impl RunnerThread {
             self.handle_channel();
 
             if self.sequence_running {
-                self.run_sequence();
+                self.update_tab();
             }
 
             if self.sequence_running {
-                self.update_tab();
+                self.run_sequence();
             }
         }
 

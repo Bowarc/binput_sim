@@ -1,8 +1,10 @@
+#[allow(unused_variables)]
 pub fn init(log_file_opt: Option<&str>) {
     use fern::colors::{Color, ColoredLevelConfig};
 
     let colors = ColoredLevelConfig::new().debug(Color::Magenta);
 
+    #[allow(unused_mut)]
     let mut builder = fern::Dispatch::new()
         .format(move |out, message, record| {
             let level_text = || -> String {
@@ -25,6 +27,7 @@ pub fn init(log_file_opt: Option<&str>) {
             ))
         })
         .level(log::LevelFilter::Debug)
+        .level_for("eframe", log::LevelFilter::Warn)
         .chain(std::io::stdout());
     #[cfg(not(debug_assertions))]
     if let Some(log_file) = log_file_opt {
