@@ -39,23 +39,32 @@ impl Tab {
     pub fn name(&self) -> String {
         self.name.clone()
     }
+    pub fn runner_running(&self) -> bool {
+        false
+    }
 
     fn update_runner(&mut self) {
         loop {
             match self.runner_handle.try_recv() {
-                Ok(msg) => match msg {
-                    crate::scripting::runner::RunnerMessage::Goodbye => {
-                        debug!("The runner thread {} exited", self.name)
-                    }
-                    crate::scripting::runner::RunnerMessage::CrusorUpdate(cursor) => {
-                        trace!("Tab cursor updated to {cursor}");
-                        self.current_action_index = cursor;
-                    }
+                Ok(msg) => {
+                    debug!("tab: {} received a message {msg:?}", self.name);
+                    match msg {
+                        crate::scripting::runner::RunnerMessage::Goodbye => {
+                            debug!("The runner thread {} exited", self.name)
+                        }
+                        crate::scripting::runner::RunnerMessage::CrusorUpdate(cursor) => {
+                            trace!("Tab cursor updated to {cursor}");
+                            self.current_action_index = cursor;
+                        }
+                        crate::scripting::runner::RunnerMessage::SequenceDeleted => {
+                            self.current_action_index = 0
+                        }
 
-                    _ => {
-                        warn!("Unexpected thread message: {msg:?}")
+                        _ => {
+                            warn!("Unexpected thread message: {msg:?}")
+                        }
                     }
-                },
+                }
                 Err(e) => match e {
                     std::sync::mpsc::TryRecvError::Empty => {
                         break;
@@ -96,9 +105,9 @@ impl Tab {
 
         ui.add_space(30.);
 
-        for _ in 0..30 {
-            ui.label("Salut");
-        }
+        // for _ in 0..30 {
+        //     ui.label("Salut");
+        // }
         self.draw_current_sequence(ui);
 
         let amount: usize = 10;
@@ -136,24 +145,44 @@ impl Tab {
                 r
             },
             |ui| {
-                if ui.button("Run sequence").clicked() {
-                    debug!("Sending a request to the runner");
-                    self.runner_handle
-                        .send(crate::scripting::runner::RunnerMessage::SetSequence(
-                            self.key_sequence.clone(),
-                        ))
-                        .unwrap();
+                ui.horizontal(|ui| {
+                    if ui.button("Run sequence").clicked() {
+                        debug!("Sending a request to the runner");
+                        self.runner_handle
+                            .send(crate::scripting::runner::RunnerMessage::SetSequence(
+                                self.key_sequence.clone(),
+                            ))
+                            .unwrap();
 
-                    self.runner_handle
-                        .send(crate::scripting::runner::RunnerMessage::StartSequence)
-                        .unwrap()
-                }
-                if ui.button("Stop sequence").clicked() {
-                    debug!("Sending a stop request to the runner");
-                    self.runner_handle
-                        .send(crate::scripting::runner::RunnerMessage::StopSequence)
-                        .unwrap();
-                }
+                        self.runner_handle
+                            .send(crate::scripting::runner::RunnerMessage::StartSequence)
+                            .unwrap()
+                    }
+                    if ui.button("Stop sequence").clicked() {
+                        debug!("Sending a stop request to the runner");
+                        self.runner_handle
+                            .send(crate::scripting::runner::RunnerMessage::StopSequence)
+                            .unwrap();
+                        self.runner_handle
+                            .send(crate::scripting::runner::RunnerMessage::CleanSequence)
+                            .unwrap();
+                    }
+                });
+                ui.horizontal(|ui| {
+                    if ui.button("Pause sequence").clicked() {
+                        debug!("Sending a request to pause the current sequence");
+                        self.runner_handle
+                            .send(crate::scripting::runner::RunnerMessage::StopSequence)
+                            .unwrap();
+                    }
+
+                    if ui.button("Resume sequence").clicked() {
+                        debug!("Sending a request to resume the current sequence");
+                        self.runner_handle
+                            .send(crate::scripting::runner::RunnerMessage::StartSequence)
+                            .unwrap();
+                    }
+                });
 
                 let res = ui
                     .group(|ui| {

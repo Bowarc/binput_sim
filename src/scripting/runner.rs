@@ -32,6 +32,7 @@ pub struct RunnerThread {
     name: String,
     sequence_running: bool,
     requested_stop: bool,
+    last_cursor_update_sent: usize,
 }
 
 pub struct RunnerState {
@@ -121,6 +122,8 @@ impl RunnerThread {
             current_sequence: None,
             sequence_running: false,
             requested_stop: false,
+
+            last_cursor_update_sent: 0,
         }
     }
 
@@ -212,10 +215,17 @@ impl RunnerThread {
             return;
         };
 
+        let cursor = seq.cursor();
+
+        if cursor == self.last_cursor_update_sent {
+            return;
+        }
+
         if let Err(e) = self.channel.send(RunnerMessage::CrusorUpdate(seq.cursor())) {
             error!("Encoutered an error while sending CrusorUpdate to main thread: {e:?}");
             self.requested_stop = true
         }
+        self.last_cursor_update_sent = cursor;
     }
 
     fn run(&mut self) {

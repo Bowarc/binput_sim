@@ -1,13 +1,17 @@
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub struct Delay {
     pub t: spin_sleep::Nanoseconds,
+    waiting_instant: Option<std::time::Instant>,
 }
 
 impl Delay {
     pub fn new(wait_time_s: f64) -> Self {
         let t: spin_sleep::Nanoseconds = (wait_time_s * 1_000_000_000.) as u64;
 
-        Self { t }
+        Self {
+            t,
+            waiting_instant: None,
+        }
     }
     pub fn as_millis(&self) -> f64 {
         self.t as f64 / 1_000_000.
@@ -15,6 +19,18 @@ impl Delay {
 
     pub fn as_std_duration(&self) -> std::time::Duration {
         std::time::Duration::from_nanos(self.t)
+    }
+
+    pub fn start_wait(&mut self) {
+        self.waiting_instant = Some(std::time::Instant::now());
+    }
+
+    pub fn is_finished(&self) -> bool {
+        if let Some(instant) = self.waiting_instant {
+            instant.elapsed().as_nanos() >= self.t.into()
+        } else {
+            false
+        }
     }
 
     pub fn wait(&self) {
