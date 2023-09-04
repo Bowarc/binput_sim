@@ -40,7 +40,7 @@ impl Tab {
         self.name.clone()
     }
     pub fn runner_running(&self) -> bool {
-        false
+        self.runner_handle.is_runner_running()
     }
 
     fn update_runner(&mut self) {
@@ -192,8 +192,10 @@ impl Tab {
                             //             x      y
                             .auto_shrink([true, true])
                             .show(ui, |ui| {
-                                ui.label(self.test_str.clone());
-                                for (i, action) in self.key_sequence.actions().iter().enumerate() {
+                                ui.label(format!("Actions: (* => unsaved)"));
+                                for (i, action) in
+                                    self.key_sequence.actions().iter_mut().enumerate()
+                                {
                                     ui.horizontal(|ui| {
                                         let text = if i == self.current_action_index {
                                             eframe::egui::RichText::new("->")
@@ -209,36 +211,130 @@ impl Tab {
 
                                         ui.label(text);
 
-                                        let action_text = match action {
+                                        match action {
                                             crate::scripting::Action::Wait(d) => {
-                                                format!("Delay {d}")
+                                                ui.horizontal(|ui| {
+                                                    ui.label("Delay ");
+                                                    let saved_unit = d.unit;
+                                                    let id =
+                                                        format!("Time unit {i} of {}", self.name);
+
+                                                    let mut text: String =
+                                                        match ui.memory_mut(|mem| {
+                                                            mem.data.get_temp::<String>(
+                                                                id.clone().into(),
+                                                            )
+                                                        }) {
+                                                            Some(t) => {
+                                                                t
+                                                            }
+                                                            None => d.v.to_string(),
+                                                        };
+
+
+                                                    let mut equal = false;
+                                                    if let Ok(v) = text.parse::<f64>(){
+                                                        if v == d.v{
+                                                            equal = true;
+                                                        }
+                                                    }
+
+                                                    if !equal{
+                                                        ui.label("*");
+
+                                                    }
+
+                                                    // ui.text_edit_singleline(&mut text);
+                                                    ui.add(eframe::egui::widgets::TextEdit::singleline(&mut text).id(format!("Text edit {i} of {}", self.name).into()));
+
+                                                    eframe::egui::ComboBox::from_id_source(
+                                                        id.clone(),
+                                                    )
+                                                    .selected_text(format!("{:?}", d.unit))
+                                                    .show_ui(ui, |ui| {
+                                                        for unit in [
+                                                            crate::time::TimeUnit::Nanoseconds,
+                                                            crate::time::TimeUnit::Microseconds,
+                                                            crate::time::TimeUnit::Milliseconds,
+                                                            crate::time::TimeUnit::Seconds,
+                                                        ] {
+                                                            ui.selectable_value(
+                                                                &mut d.unit,
+                                                                unit,
+                                                                format!("{unit:?}"),
+                                                            );
+                                                        }
+                                                    });
+
+                                                    if let Ok(v) = text.parse::<f64>() {
+                                                        d.v = v;
+                                                        if text.ends_with('.')
+                                                            || text != format!("{v}")
+                                                        {
+                                                            ui.memory_mut(|mem| {
+                                                                mem.data
+                                                                    .insert_temp(id.into(), text)
+                                                            })
+                                                        } else {
+
+                                                            ui.memory_mut(|mem| {
+                                                                mem.data.remove::<String>(id.into())
+                                                            })
+                                                        }
+                                                    } else {
+                                                        ui.memory_mut(|mem| {
+                                                            mem.data.insert_temp(id.into(), text)
+                                                        })
+                                                    }
+
+                                                    if d.unit != saved_unit {
+                                                        println!("Has changed");
+                                                        let new_v = match d.unit {
+                                                            crate::time::TimeUnit::Nanoseconds => {
+                                                                saved_unit.to_nanos(d.v)
+                                                            }
+                                                            crate::time::TimeUnit::Microseconds => {
+                                                                saved_unit.to_micros(d.v)
+                                                            }
+                                                            crate::time::TimeUnit::Milliseconds => {
+                                                                saved_unit.to_millis(d.v)
+                                                            }
+                                                            crate::time::TimeUnit::Seconds => {
+                                                                saved_unit.to_seconds(d.v)
+                                                            }
+                                                        };
+                                                        d.v = new_v
+                                                    }
+                                                });
                                             }
                                             crate::scripting::Action::KeyPress(key) => {
-                                                format!("Key({key:?}) press")
+                                                // format!("Key({key:?}) press")
                                             }
                                             crate::scripting::Action::KeyRelease(key) => {
-                                                format!("Key({key:?}) release")
+                                                // format!("Key({key:?}) release")
                                             }
                                             crate::scripting::Action::MouseMovement(
                                                 mode,
                                                 amount,
                                             ) => {
-                                                format!("Mouse movement {mode:?} {amount:?}")
+                                                // format!("Mouse movement {mode:?} {amount:?}")
                                             }
                                             crate::scripting::Action::ButtonPress(btn) => {
-                                                format!("Button({btn:?}) press")
+                                                // format!("Button({btn:?}) press")
                                             }
                                             crate::scripting::Action::ButtonRelease(btn) => {
-                                                format!("Button({btn:?}) release")
+                                                // format!("Button({btn:?}) release")
                                             }
                                             crate::scripting::Action::Scroll(dir, amount) => {
-                                                format!("Mouse scroll {dir:?} {amount}")
+                                                // format!("Mouse scroll {dir:?} {amount}")
                                             }
-                                            crate::scripting::Action::Stop => "Stop".to_string(),
+                                            crate::scripting::Action::Stop => {
+                                                ui.label("Stop");
+                                            }
                                         };
-                                        ui.label(action_text);
+                                        // ui.label(action_text);
                                     });
-                                }
+                                };
                             });
                     })
                     .response;

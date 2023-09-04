@@ -1,24 +1,35 @@
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum TimeUnit {
+    Nanoseconds,
+    Microseconds,
+    Milliseconds,
+    Seconds,
+}
+
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub struct Delay {
-    pub t: spin_sleep::Nanoseconds,
     waiting_instant: Option<std::time::Instant>,
+
+    pub v: f64,
+    pub unit: TimeUnit,
 }
 
 impl Delay {
     pub fn new(wait_time_s: f64) -> Self {
-        let t: spin_sleep::Nanoseconds = (wait_time_s * 1_000_000_000.) as u64;
+        // let t: spin_sleep::Nanoseconds = (wait_time_s * 1000_000_000.) as u64;
 
         Self {
-            t,
+            v: wait_time_s,
+            unit: TimeUnit::Seconds,
             waiting_instant: None,
         }
     }
     pub fn as_millis(&self) -> f64 {
-        self.t as f64 / 1_000_000.
+        self.unit.to_millis(self.v)
     }
 
     pub fn as_std_duration(&self) -> std::time::Duration {
-        std::time::Duration::from_nanos(self.t)
+        std::time::Duration::from_nanos(self.unit.to_nanos(self.v) as u64)
     }
 
     pub fn start_wait(&mut self) {
@@ -27,20 +38,75 @@ impl Delay {
 
     pub fn is_finished(&self) -> bool {
         if let Some(instant) = self.waiting_instant {
-            instant.elapsed().as_nanos() >= self.t.into()
+            instant.elapsed().as_nanos() >= self.unit.to_nanos(self.v) as u64 as u128
         } else {
             false
         }
     }
 
     pub fn wait(&self) {
-        spin_sleep::sleep(std::time::Duration::from_nanos(self.t))
+        spin_sleep::sleep(std::time::Duration::from_nanos(
+            self.unit.to_nanos(self.v) as u64
+        ))
     }
 }
 
 impl std::fmt::Display for Delay {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", display_duration(self.as_std_duration(), ""))
+    }
+}
+
+impl TimeUnit {
+    pub fn to_nanos(self, v: f64) -> f64 {
+        match self {
+            TimeUnit::Nanoseconds => v,
+            TimeUnit::Microseconds => v * 1e+3,
+            TimeUnit::Milliseconds => v * 1e+6,
+            TimeUnit::Seconds => v * 1e+9,
+        }
+    }
+
+    pub fn to_micros(self, v: f64) -> f64 {
+        match self {
+            TimeUnit::Nanoseconds => v / 1e+3,
+            TimeUnit::Microseconds => v,
+            TimeUnit::Milliseconds => v * 1e+3,
+            TimeUnit::Seconds => v * 1e+6,
+        }
+    }
+
+    pub fn to_millis(self, v: f64) -> f64 {
+        match self {
+            TimeUnit::Nanoseconds => v / 1e+6,
+            TimeUnit::Microseconds => v / 1e+3,
+            TimeUnit::Milliseconds => v,
+            TimeUnit::Seconds => v * 1e+3,
+        }
+    }
+
+    pub fn to_seconds(self, v: f64) -> f64 {
+        match self {
+            TimeUnit::Nanoseconds => v / 1e+9,
+            TimeUnit::Microseconds => v / 1e+6,
+            TimeUnit::Milliseconds => v / 1e+3,
+            TimeUnit::Seconds => v,
+        }
+    }
+}
+
+impl std::fmt::Display for TimeUnit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                TimeUnit::Nanoseconds => "ns",
+                TimeUnit::Microseconds => "µs",
+                TimeUnit::Milliseconds => "ms",
+                TimeUnit::Seconds => "s",
+            }
+        )
     }
 }
 
