@@ -13,7 +13,7 @@ impl Tab {
             crate::scripting::Action::Wait(crate::time::Delay::new(1.)),
             crate::scripting::Action::MouseMovement(
                 crate::scripting::CursorMovementMode::Relative,
-                (1000, 0),
+                (0, -200),
             ),
             crate::scripting::Action::Stop,
         ]);
@@ -225,6 +225,9 @@ impl Tab {
                                                 mode,
                                                 amount,
                                             ) => {
+                                                draw_action_mouse_movement(
+                                                    ui, mode, amount, i, &self.name,
+                                                );
                                                 // format!("Mouse movement {mode:?} {amount:?}")
                                             }
                                             crate::scripting::Action::ButtonPress(btn) => {
@@ -279,13 +282,15 @@ fn draw_action_wait(
     i: usize,
     tab_name: &str,
 ) {
+    let base_id = format!("{tab_name}wait{i}");
+
     ui.horizontal(|ui| {
         ui.label("Delay ");
         let saved_unit = d.unit;
-        let id = format!("Time unit {i} of {tab_name}");
 
+        let mem_text_id = base_id.clone() + "memtext";
         let mut text: String =
-            match ui.memory_mut(|mem| mem.data.get_temp::<String>(id.clone().into())) {
+            match ui.memory_mut(|mem| mem.data.get_temp::<String>(mem_text_id.clone().into())) {
                 Some(t) => t,
                 None => d.v.to_string(),
             };
@@ -304,10 +309,10 @@ fn draw_action_wait(
         // ui.text_edit_singleline(&mut text);
         ui.add(
             eframe::egui::widgets::TextEdit::singleline(&mut text)
-                .id(format!("Text edit {i} of {tab_name}").into()),
+                .id((base_id.clone() + "textedit").into()),
         );
 
-        eframe::egui::ComboBox::from_id_source(id.clone())
+        eframe::egui::ComboBox::from_id_source(base_id.clone() + "combobox")
             .selected_text(format!("{:?}", d.unit))
             .show_ui(ui, |ui| {
                 for unit in [
@@ -323,12 +328,12 @@ fn draw_action_wait(
         if let Ok(v) = text.parse::<f64>() {
             d.v = v;
             if text.ends_with('.') || text != format!("{v}") {
-                ui.memory_mut(|mem| mem.data.insert_temp(id.into(), text))
+                ui.memory_mut(|mem| mem.data.insert_temp(mem_text_id.into(), text))
             } else {
-                ui.memory_mut(|mem| mem.data.remove::<String>(id.into()))
+                ui.memory_mut(|mem| mem.data.remove::<String>(mem_text_id.into()))
             }
         } else {
-            ui.memory_mut(|mem| mem.data.insert_temp(id.into(), text))
+            ui.memory_mut(|mem| mem.data.insert_temp(mem_text_id.into(), text))
         }
 
         if d.unit != saved_unit {
@@ -341,5 +346,55 @@ fn draw_action_wait(
             };
             d.v = new_v
         }
+    });
+}
+
+fn draw_action_mouse_movement(
+    ui: &mut eframe::egui::Ui,
+    curr_mode: &mut crate::scripting::CursorMovementMode,
+    amount: &mut (i32, i32),
+    i: usize,
+    tab_name: &str,
+) {
+    let base_id = format!("{tab_name}wait{i}");
+
+    fn draw_amount_text_edit(
+        ui: &mut eframe::egui::Ui,
+        base_id: String,
+        amnt: &mut i32,
+        name: &str,
+    ) {
+        // let base = *amnt;
+
+        let mut txt = format!("{amnt}");
+
+        ui.add(
+            eframe::egui::widgets::TextEdit::singleline(&mut txt)
+                .id((base_id + &format!("textedit{name}")).into())
+                .desired_width(50.),
+        );
+
+        if let Ok(modified_amnt) = txt.parse::<i32>() {
+            *amnt = modified_amnt
+        }
+    }
+
+    ui.horizontal(|ui| {
+        ui.label("Mouse movement ");
+
+        eframe::egui::ComboBox::from_id_source(base_id.clone() + "combobox")
+            .selected_text(format!("{curr_mode:?}"))
+            .show_ui(ui, |ui| {
+                for mode in [
+                    crate::scripting::CursorMovementMode::Absolute,
+                    crate::scripting::CursorMovementMode::Relative,
+                ] {
+                    ui.selectable_value(curr_mode, mode, format!("{mode:?}"));
+                }
+            });
+
+        draw_amount_text_edit(ui, base_id.clone(), &mut amount.0, "X");
+
+        draw_amount_text_edit(ui, base_id.clone(), &mut amount.1, "Y");
     });
 }
