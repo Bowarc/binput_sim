@@ -21,7 +21,12 @@ fn main() {
         transparent: true,
         always_on_top: true,
         default_theme: eframe::Theme::Dark,
-
+        // icon_data: Some(
+        //     eframe::IconData::try_from_png_bytes(include_bytes!(
+        //         "..\\assets\\icons8-robot-64_w.png"
+        //     ))
+        //     .unwrap(),
+        // ),
         ..Default::default()
     };
     eframe::run_native(

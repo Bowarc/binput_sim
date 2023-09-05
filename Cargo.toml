@@ -14,3 +14,7 @@ log = "0.4.20"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 spin_sleep = "1.1.1"
 thiserror = "1.0.47"
+
+
+
+strum = { version = "0.25.0", features = ["derive"] }

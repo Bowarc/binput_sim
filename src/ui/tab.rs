@@ -15,6 +15,9 @@ impl Tab {
                 crate::scripting::CursorMovementMode::Relative,
                 (0, -200),
             ),
+            crate::scripting::Action::KeyPress(inputbot::KeybdKey::SpaceKey),
+            crate::scripting::Action::Wait(crate::time::Delay::new(0.5)),
+            crate::scripting::Action::KeyRelease(inputbot::KeybdKey::SpaceKey),
             crate::scripting::Action::Stop,
         ]);
 
@@ -167,6 +170,27 @@ impl Tab {
                             .send(crate::scripting::runner::RunnerMessage::CleanSequence)
                             .unwrap();
                     }
+
+                    ui.with_layout(
+                        eframe::egui::Layout::right_to_left(eframe::egui::Align::Min),
+                        |ui| {
+                            ui.add_space(10.);
+
+                            let btn_response = ui
+                                .add(eframe::egui::widgets::Button::new(
+                                    eframe::egui::RichText::new("Release all")
+                                        .color(eframe::egui::Color32::from_rgb(200, 0, 0)),
+                                ))
+                                .on_hover_ui(|ui| {
+                                    ui.label("Releases all keys and mouse buttons");
+                                });
+
+                            if btn_response.clicked() {
+                                crate::scripting::utils::release_all_kbkeys();
+                                crate::scripting::utils::release_all_mouse_btns();
+                            }
+                        },
+                    );
                 });
                 ui.horizontal(|ui| {
                     if ui.button("Pause sequence").clicked() {
@@ -216,9 +240,12 @@ impl Tab {
                                                 draw_action_wait(ui, d, i, &self.name);
                                             }
                                             crate::scripting::Action::KeyPress(key) => {
+                                                draw_action_keypress(ui, key, i, &self.name);
                                                 // format!("Key({key:?}) press")
                                             }
                                             crate::scripting::Action::KeyRelease(key) => {
+                                                draw_action_keyrelease(ui, key, i, &self.name);
+
                                                 // format!("Key({key:?}) release")
                                             }
                                             crate::scripting::Action::MouseMovement(
@@ -337,7 +364,6 @@ fn draw_action_wait(
         }
 
         if d.unit != saved_unit {
-            println!("Has changed");
             let new_v = match d.unit {
                 crate::time::TimeUnit::Nanoseconds => saved_unit.to_nanos(d.v),
                 crate::time::TimeUnit::Microseconds => saved_unit.to_micros(d.v),
@@ -349,6 +375,47 @@ fn draw_action_wait(
     });
 }
 
+fn draw_action_keypress(
+    ui: &mut eframe::egui::Ui,
+    curr_key: &mut inputbot::KeybdKey,
+    i: usize,
+    tab_name: &str,
+) {
+    use strum::IntoEnumIterator as _;
+
+    let base_id = format!("{tab_name}keypress{i}");
+
+    eframe::egui::ComboBox::from_id_source(base_id + "combobox")
+        .selected_text(format!(
+            "{curr_key:?}                                        "
+        ))
+        .show_ui(ui, |ui| {
+            for key in inputbot::KeybdKey::iter() {
+                ui.selectable_value(curr_key, key, format!("{key:?}"));
+            }
+        });
+}
+
+fn draw_action_keyrelease(
+    ui: &mut eframe::egui::Ui,
+    curr_key: &mut inputbot::KeybdKey,
+    i: usize,
+    tab_name: &str,
+) {
+    use strum::IntoEnumIterator as _;
+
+    let base_id = format!("{tab_name}keyrelease{i}");
+
+    eframe::egui::ComboBox::from_id_source(base_id + "combobox")
+        .selected_text(format!(
+            "{curr_key:?}                                        "
+        ))
+        .show_ui(ui, |ui| {
+            for key in inputbot::KeybdKey::iter() {
+                ui.selectable_value(curr_key, key, format!("{key:?}"));
+            }
+        });
+}
 fn draw_action_mouse_movement(
     ui: &mut eframe::egui::Ui,
     curr_mode: &mut crate::scripting::CursorMovementMode,

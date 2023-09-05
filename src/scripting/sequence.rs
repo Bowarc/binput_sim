@@ -76,7 +76,11 @@ impl KeySequence {
                     super::ScrollDirection::X => inputbot::MouseWheel::scroll_hor(*amount),
                     super::ScrollDirection::Y => inputbot::MouseWheel::scroll_ver(*amount),
                 },
-                super::Action::Stop => self.requested_stop = true,
+                super::Action::Stop => {
+                    super::utils::release_all_kbkeys();
+                    super::utils::release_all_mouse_btns();
+                    self.requested_stop = true
+                }
             }
         }
 

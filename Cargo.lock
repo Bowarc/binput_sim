@@ -384,6 +384,7 @@ dependencies = [
  "log",
  "log-panics",
  "spin_sleep",
+ "strum",
  "thiserror",
 ]
 
