@@ -2,7 +2,6 @@
 extern crate log;
 
 mod error;
-mod input;
 mod logger;
 mod scripting;
 mod threading;

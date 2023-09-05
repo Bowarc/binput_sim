@@ -16,8 +16,12 @@ impl Tab {
                 (0, -200),
             ),
             crate::scripting::Action::KeyPress(inputbot::KeybdKey::SpaceKey),
-            crate::scripting::Action::Wait(crate::time::Delay::new(0.5)),
+            crate::scripting::Action::Wait(crate::time::Delay::new(0.1)),
             crate::scripting::Action::KeyRelease(inputbot::KeybdKey::SpaceKey),
+            crate::scripting::Action::Wait(crate::time::Delay::new(1.5)),
+            crate::scripting::Action::ButtonPress(inputbot::MouseButton::LeftButton),
+            crate::scripting::Action::Wait(crate::time::Delay::new(0.1)),
+            crate::scripting::Action::ButtonRelease(inputbot::MouseButton::LeftButton),
             crate::scripting::Action::Stop,
         ]);
 
@@ -258,10 +262,10 @@ impl Tab {
                                                 // format!("Mouse movement {mode:?} {amount:?}")
                                             }
                                             crate::scripting::Action::ButtonPress(btn) => {
-                                                // format!("Button({btn:?}) press")
+                                                draw_action_buttonpress(ui, btn, i, &self.name)
                                             }
                                             crate::scripting::Action::ButtonRelease(btn) => {
-                                                // format!("Button({btn:?}) release")
+                                                draw_action_buttonrelease(ui, btn, i, &self.name)
                                             }
                                             crate::scripting::Action::Scroll(dir, amount) => {
                                                 // format!("Mouse scroll {dir:?} {amount}")
@@ -464,4 +468,46 @@ fn draw_action_mouse_movement(
 
         draw_amount_text_edit(ui, base_id.clone(), &mut amount.1, "Y");
     });
+}
+
+fn draw_action_buttonpress(
+    ui: &mut eframe::egui::Ui,
+    curr_btn: &mut inputbot::MouseButton,
+    i: usize,
+    tab_name: &str,
+) {
+    use strum::IntoEnumIterator as _;
+
+    let base_id = format!("{tab_name}buttonpress{i}");
+
+    eframe::egui::ComboBox::from_id_source(base_id + "combobox")
+        .selected_text(format!(
+            "{curr_btn:?}                                        "
+        ))
+        .show_ui(ui, |ui| {
+            for btn in inputbot::MouseButton::iter() {
+                ui.selectable_value(curr_btn, btn, format!("{btn:?}"));
+            }
+        });
+}
+
+fn draw_action_buttonrelease(
+    ui: &mut eframe::egui::Ui,
+    curr_btn: &mut inputbot::MouseButton,
+    i: usize,
+    tab_name: &str,
+) {
+    use strum::IntoEnumIterator as _;
+
+    let base_id = format!("{tab_name}buttonrelease{i}");
+
+    eframe::egui::ComboBox::from_id_source(base_id + "combobox")
+        .selected_text(format!(
+            "{curr_btn:?}                                        "
+        ))
+        .show_ui(ui, |ui| {
+            for btn in inputbot::MouseButton::iter() {
+                ui.selectable_value(curr_btn, btn, format!("{btn:?}"));
+            }
+        });
 }
