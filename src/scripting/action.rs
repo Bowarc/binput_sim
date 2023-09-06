@@ -7,6 +7,7 @@ pub enum Action {
     ButtonPress(inputbot::MouseButton),
     ButtonRelease(inputbot::MouseButton),
     Scroll(ScrollDirection, i32), // direction, amount
+    KeySequence(String),
     // Condition(Action, Condition),
     // AbsoluteJump(usize),         // position
     // RelativeJump(usize), // jump length, negative for backwards

@@ -1,6 +1,9 @@
+// Formatting
+const COMBO_BOX_TEXT_SPACING: &str = "                               ";
+
 pub struct Tab {
     name: String,
-    key_sequence: crate::scripting::KeySequence,
+    action_sequence: crate::scripting::ActionSequence,
     runner_handle: crate::scripting::runner::RunnerHandle,
     test_str: String,
     current_action_index: usize,
@@ -8,7 +11,7 @@ pub struct Tab {
 
 impl Tab {
     pub fn new(name: String) -> Self {
-        let seq = crate::scripting::KeySequence::new(vec![
+        let seq = crate::scripting::ActionSequence::new(vec![
             crate::scripting::Action::Wait(crate::time::Delay::new(10.)),
             crate::scripting::Action::Wait(crate::time::Delay::new(1.)),
             crate::scripting::Action::MouseMovement(
@@ -22,6 +25,10 @@ impl Tab {
             crate::scripting::Action::ButtonPress(inputbot::MouseButton::LeftButton),
             crate::scripting::Action::Wait(crate::time::Delay::new(0.1)),
             crate::scripting::Action::ButtonRelease(inputbot::MouseButton::LeftButton),
+            crate::scripting::Action::Wait(crate::time::Delay::new(1.5)),
+            crate::scripting::Action::Scroll(crate::scripting::ScrollDirection::Y, 10),
+            crate::scripting::Action::Wait(crate::time::Delay::new(1.5)),
+            crate::scripting::Action::KeySequence(String::from("Cool text written by a bot")),
             crate::scripting::Action::Stop,
         ]);
 
@@ -39,7 +46,7 @@ impl Tab {
             current_action_index: 0,
             runner_handle: runner,
             name,
-            key_sequence: seq,
+            action_sequence: seq,
         }
     }
 
@@ -110,31 +117,101 @@ impl Tab {
             })
         });
 
-        ui.add_space(30.);
+        ui.add_space(20.);
 
         // for _ in 0..30 {
         //     ui.label("Salut");
         // }
+        ui.label("Add actions to the sequence");
+        ui.add_space(10.);
+
+        {
+            ui.horizontal(|ui| {
+                if ui.button("Delay").clicked() {
+                    self.action_sequence
+                        .actions()
+                        .push(crate::scripting::Action::Wait(crate::time::Delay::new(1.)));
+                }
+
+                if ui.button("Stop").clicked() {
+                    self.action_sequence
+                        .actions()
+                        .push(crate::scripting::Action::Stop);
+                }
+            });
+
+            ui.add_space(10.);
+
+            ui.horizontal(|ui| {
+                if ui.button("Keyboard press").clicked() {
+                    self.action_sequence
+                        .actions()
+                        .push(crate::scripting::Action::KeyPress(
+                            inputbot::KeybdKey::SpaceKey,
+                        ));
+                }
+
+                if ui.button("Keyboard release").clicked() {
+                    self.action_sequence
+                        .actions()
+                        .push(crate::scripting::Action::KeyRelease(
+                            inputbot::KeybdKey::SpaceKey,
+                        ));
+                }
+            });
+            ui.add_space(10.);
+
+            ui.horizontal(|ui| {
+                if ui.button("Key press").clicked() {
+                    self.action_sequence
+                        .actions()
+                        .push(crate::scripting::Action::KeyPress(
+                            inputbot::KeybdKey::SpaceKey,
+                        ));
+                }
+
+                if ui.button("Key release").clicked() {
+                    self.action_sequence
+                        .actions()
+                        .push(crate::scripting::Action::KeyRelease(
+                            inputbot::KeybdKey::SpaceKey,
+                        ));
+                }
+            });
+            ui.add_space(10.);
+
+            ui.horizontal(|ui| {
+                if ui.button("Mouse movement").clicked() {
+                    self.action_sequence
+                        .actions()
+                        .push(crate::scripting::Action::MouseMovement(
+                            crate::scripting::CursorMovementMode::Absolute,
+                            (0, 0),
+                        ));
+                }
+
+                if ui.button("Mouse scroll").clicked() {
+                    self.action_sequence
+                        .actions()
+                        .push(crate::scripting::Action::Scroll(
+                            crate::scripting::ScrollDirection::Y,
+                            -10,
+                        ));
+                }
+            });
+
+            ui.add_space(10.);
+
+            ui.horizontal(|ui| {
+                if ui.button("Key sequence").clicked() {
+                    self.action_sequence
+                        .actions()
+                        .push(crate::scripting::Action::KeySequence(String::new()))
+                }
+            });
+        }
+
         self.draw_current_sequence(ui);
-
-        let amount: usize = 10;
-        ui.horizontal(|ui| {
-            if ui.button("add").clicked() {
-                for _ in 0..amount {
-                    self.test_str.push('a');
-                }
-            }
-            if ui.button("remove").clicked() {
-                for _ in 0..amount {
-                    self.test_str.pop();
-                }
-            }
-
-            if ui.button("Move1").clicked() {
-                self.current_action_index =
-                    (self.current_action_index + 1) % (self.key_sequence.actions().len());
-            }
-        });
     }
 
     fn draw_current_sequence(&mut self, ui: &mut eframe::egui::Ui) {
@@ -147,6 +224,7 @@ impl Tab {
 
                 r.min.y += 100.;
                 if let Some(w) = last_width {
+                    let w = w.max(500.);
                     r.min.x = r.max.x - w;
                 }
                 r
@@ -157,7 +235,7 @@ impl Tab {
                         debug!("Sending a request to the runner");
                         self.runner_handle
                             .send(crate::scripting::runner::RunnerMessage::SetSequence(
-                                self.key_sequence.clone(),
+                                self.action_sequence.clone(),
                             ))
                             .unwrap();
 
@@ -221,9 +299,12 @@ impl Tab {
                             .auto_shrink([true, true])
                             .show(ui, |ui| {
                                 ui.label("Actions: (* => unsaved)");
-                                for (i, action) in
-                                    self.key_sequence.actions().iter_mut().enumerate()
-                                {
+
+                                let mut i = 0;
+
+                                while let Some(action) = self.action_sequence.actions().get_mut(i) {
+                                    let mut delete_requested = false;
+
                                     ui.horizontal(|ui| {
                                         let cursor = if i == self.current_action_index {
                                             eframe::egui::RichText::new("->")
@@ -236,6 +317,16 @@ impl Tab {
                                                 )
                                                 .monospace()
                                         };
+
+                                        if ui
+                                            .button(
+                                                eframe::egui::RichText::new("X")
+                                                    .color(eframe::egui::Color32::DARK_RED),
+                                            )
+                                            .clicked()
+                                        {
+                                            delete_requested = true;
+                                        }
 
                                         ui.label(cursor);
 
@@ -268,14 +359,24 @@ impl Tab {
                                                 draw_action_buttonrelease(ui, btn, i, &self.name)
                                             }
                                             crate::scripting::Action::Scroll(dir, amount) => {
+                                                draw_action_scroll(ui, dir, amount, i, &self.name)
+
                                                 // format!("Mouse scroll {dir:?} {amount}")
+                                            }
+                                            crate::scripting::Action::KeySequence(s) => {
+                                                draw_action_keysequence(ui, s, i, &self.name)
                                             }
                                             crate::scripting::Action::Stop => {
                                                 ui.label("Stop");
                                             }
                                         };
-                                        // ui.label(action_text);
                                     });
+
+                                    if delete_requested {
+                                        self.action_sequence.actions().remove(i);
+                                    } else {
+                                        i += 1;
+                                    }
                                 }
                             });
                     })
@@ -344,7 +445,7 @@ fn draw_action_wait(
         );
 
         eframe::egui::ComboBox::from_id_source(base_id.clone() + "combobox")
-            .selected_text(format!("{:?}", d.unit))
+            .selected_text(format!("{:?}    ", d.unit))
             .show_ui(ui, |ui| {
                 for unit in [
                     crate::time::TimeUnit::Nanoseconds,
@@ -388,16 +489,16 @@ fn draw_action_keypress(
     use strum::IntoEnumIterator as _;
 
     let base_id = format!("{tab_name}keypress{i}");
-
-    eframe::egui::ComboBox::from_id_source(base_id + "combobox")
-        .selected_text(format!(
-            "{curr_key:?}                                        "
-        ))
-        .show_ui(ui, |ui| {
-            for key in inputbot::KeybdKey::iter() {
-                ui.selectable_value(curr_key, key, format!("{key:?}"));
-            }
-        });
+    ui.horizontal(|ui| {
+        ui.label("Kb key press ");
+        eframe::egui::ComboBox::from_id_source(base_id + "combobox")
+            .selected_text(format!("{curr_key:?}{COMBO_BOX_TEXT_SPACING}"))
+            .show_ui(ui, |ui| {
+                for key in inputbot::KeybdKey::iter() {
+                    ui.selectable_value(curr_key, key, format!("{key:?}"));
+                }
+            });
+    });
 }
 
 fn draw_action_keyrelease(
@@ -410,20 +511,21 @@ fn draw_action_keyrelease(
 
     let base_id = format!("{tab_name}keyrelease{i}");
 
-    eframe::egui::ComboBox::from_id_source(base_id + "combobox")
-        .selected_text(format!(
-            "{curr_key:?}                                        "
-        ))
-        .show_ui(ui, |ui| {
-            for key in inputbot::KeybdKey::iter() {
-                ui.selectable_value(curr_key, key, format!("{key:?}"));
-            }
-        });
+    ui.horizontal(|ui| {
+        ui.label("Kb key release ");
+        eframe::egui::ComboBox::from_id_source(base_id + "combobox")
+            .selected_text(format!("{curr_key:?}{COMBO_BOX_TEXT_SPACING}"))
+            .show_ui(ui, |ui| {
+                for key in inputbot::KeybdKey::iter() {
+                    ui.selectable_value(curr_key, key, format!("{key:?}"));
+                }
+            });
+    });
 }
 fn draw_action_mouse_movement(
     ui: &mut eframe::egui::Ui,
     curr_mode: &mut crate::scripting::CursorMovementMode,
-    amount: &mut (i32, i32),
+    curr_amount: &mut (i32, i32),
     i: usize,
     tab_name: &str,
 ) {
@@ -464,9 +566,9 @@ fn draw_action_mouse_movement(
                 }
             });
 
-        draw_amount_text_edit(ui, base_id.clone(), &mut amount.0, "X");
+        draw_amount_text_edit(ui, base_id.clone(), &mut curr_amount.0, "X");
 
-        draw_amount_text_edit(ui, base_id.clone(), &mut amount.1, "Y");
+        draw_amount_text_edit(ui, base_id.clone(), &mut curr_amount.1, "Y");
     });
 }
 
@@ -480,15 +582,16 @@ fn draw_action_buttonpress(
 
     let base_id = format!("{tab_name}buttonpress{i}");
 
-    eframe::egui::ComboBox::from_id_source(base_id + "combobox")
-        .selected_text(format!(
-            "{curr_btn:?}                                        "
-        ))
-        .show_ui(ui, |ui| {
-            for btn in inputbot::MouseButton::iter() {
-                ui.selectable_value(curr_btn, btn, format!("{btn:?}"));
-            }
-        });
+    ui.horizontal(|ui| {
+        ui.label("Mouse press ");
+        eframe::egui::ComboBox::from_id_source(base_id + "combobox")
+            .selected_text(format!("{curr_btn:?}{COMBO_BOX_TEXT_SPACING}"))
+            .show_ui(ui, |ui| {
+                for btn in inputbot::MouseButton::iter() {
+                    ui.selectable_value(curr_btn, btn, format!("{btn:?}"));
+                }
+            });
+    });
 }
 
 fn draw_action_buttonrelease(
@@ -501,13 +604,73 @@ fn draw_action_buttonrelease(
 
     let base_id = format!("{tab_name}buttonrelease{i}");
 
-    eframe::egui::ComboBox::from_id_source(base_id + "combobox")
-        .selected_text(format!(
-            "{curr_btn:?}                                        "
-        ))
-        .show_ui(ui, |ui| {
-            for btn in inputbot::MouseButton::iter() {
-                ui.selectable_value(curr_btn, btn, format!("{btn:?}"));
-            }
-        });
+    ui.horizontal(|ui| {
+        ui.label("Mouse release ");
+        eframe::egui::ComboBox::from_id_source(base_id + "combobox")
+            .selected_text(format!("{curr_btn:?}{COMBO_BOX_TEXT_SPACING}"))
+            .show_ui(ui, |ui| {
+                for btn in inputbot::MouseButton::iter() {
+                    ui.selectable_value(curr_btn, btn, format!("{btn:?}"));
+                }
+            });
+    });
+}
+
+fn draw_action_scroll(
+    ui: &mut eframe::egui::Ui,
+    curr_dir: &mut crate::scripting::ScrollDirection,
+    curr_amnt: &mut i32,
+    i: usize,
+    tab_name: &str,
+) {
+    let base_id = format!("{tab_name}scroll{i}");
+
+    ui.horizontal(|ui| {
+        ui.label("Mouse scroll ");
+        eframe::egui::ComboBox::from_id_source(base_id.clone() + "combobox")
+            .selected_text(format!("{curr_dir:?}"))
+            .show_ui(ui, |ui| {
+                for dir in [
+                    crate::scripting::ScrollDirection::X,
+                    crate::scripting::ScrollDirection::Y,
+                ] {
+                    ui.selectable_value(curr_dir, dir, format!("{dir:?}"));
+                }
+            });
+
+        let mut txt = format!("{curr_amnt}");
+
+        ui.add(
+            eframe::egui::widgets::TextEdit::singleline(&mut txt)
+                .id((base_id + "textedit").into())
+                .desired_width(50.),
+        );
+
+        if let Ok(modified_amnt) = txt.parse::<i32>() {
+            *curr_amnt = modified_amnt
+        }
+    });
+}
+
+fn draw_action_keysequence(
+    ui: &mut eframe::egui::Ui,
+    curr_seq: &mut String,
+    i: usize,
+    tab_name: &str,
+) {
+    let base_id = format!("{tab_name}keysequence{i}");
+
+    ui.horizontal(|ui| {
+        ui.label("key sequence ");
+
+        let hint_text = "Write a sentence here";
+        let id = base_id + "textedit";
+
+        ui.add(
+            eframe::egui::widgets::TextEdit::multiline(curr_seq)
+                .id(id.into())
+                .hint_text(hint_text)
+                .desired_rows(1),
+        );
+    });
 }

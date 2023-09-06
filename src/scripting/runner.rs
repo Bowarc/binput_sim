@@ -1,6 +1,6 @@
 #[derive(PartialEq, Debug)]
 pub enum RunnerMessage {
-    SetSequence(crate::scripting::KeySequence),
+    SetSequence(crate::scripting::ActionSequence),
     SequenceSet,
 
     StartSequence,
@@ -28,7 +28,7 @@ pub struct RunnerHandle {
 
 pub struct RunnerThread {
     channel: crate::threading::Channel<RunnerMessage>,
-    current_sequence: Option<crate::scripting::KeySequence>,
+    current_sequence: Option<crate::scripting::ActionSequence>,
     name: String,
     sequence_running: bool,
     requested_stop: bool,
@@ -36,7 +36,7 @@ pub struct RunnerThread {
 }
 
 pub struct RunnerState {
-    current_sequence: super::KeySequence,
+    current_sequence: super::ActionSequence,
     running: bool,
 }
 
@@ -156,7 +156,7 @@ impl RunnerThread {
         }
     }
 
-    fn set_sequence_without_running(&mut self, seq: super::KeySequence) {
+    fn set_sequence_without_running(&mut self, seq: super::ActionSequence) {
         self.current_sequence = Some(seq);
         self.channel.send(RunnerMessage::SequenceSet).unwrap();
     }
@@ -171,7 +171,7 @@ impl RunnerThread {
         }
     }
 
-    fn run_new_sequence(&mut self, seq: super::KeySequence) {
+    fn run_new_sequence(&mut self, seq: super::ActionSequence) {
         self.current_sequence = Some(seq);
         self.channel.send(RunnerMessage::SequenceSet).unwrap();
         self.sequence_running = true;

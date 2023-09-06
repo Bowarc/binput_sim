@@ -9,12 +9,10 @@ edition = "2021"
 chrono = "0.4.26"
 eframe = "0.22.0"
 fern = { version = "0.6.2", features = ["colored"] }
-inputbot = "0.6.0"
+inputbot = { git = "https://github.com/obv-mikhail/InputBot", branch = "develop" }
+# https://github.com/enigo-rs/enigo this could be a good replacement for inputbot
 log = "0.4.20"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 spin_sleep = "1.1.1"
 thiserror = "1.0.47"
-
-
-
 strum = { version = "0.25.0", features = ["derive"] }

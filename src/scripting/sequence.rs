@@ -1,12 +1,12 @@
 #[derive(Debug, PartialEq, Clone)]
-pub struct KeySequence {
+pub struct ActionSequence {
     seq: Vec<super::Action>,
     cursor: usize,
     requested_stop: bool,
     currently_waiting: bool,
 }
 
-impl KeySequence {
+impl ActionSequence {
     pub fn new(seq: Vec<super::Action>) -> Self {
         Self {
             seq,
@@ -81,6 +81,7 @@ impl KeySequence {
                     super::utils::release_all_mouse_btns();
                     self.requested_stop = true
                 }
+                super::Action::KeySequence(s) => inputbot::KeySequence(&s).send(),
             }
         }
 
