@@ -125,7 +125,16 @@ impl Ui {
         utils::centerer(ui, |ui| {
             for (index, tab) in self.tabs.iter().enumerate() {
                 if ui
-                    .button(eframe::egui::RichText::new(tab.name()).size(20.).strong())
+                    .button(
+                        eframe::egui::RichText::new(tab.name())
+                            .size(20.)
+                            .color(if index == self.current_tab_index {
+                                eframe::egui::Color32::GREEN
+                            } else {
+                                eframe::egui::Color32::WHITE
+                            })
+                            .strong(),
+                    )
                     .clicked()
                 {
                     self.current_tab_index = index
