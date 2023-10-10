@@ -1,4 +1,4 @@
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub enum Action {
     Wait(crate::time::Delay),
     KeyPress(inputbot::KeybdKey),
@@ -14,13 +14,13 @@ pub enum Action {
     Stop,
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize)]
 pub enum ScrollDirection {
     X,
     Y,
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, serde::Deserialize, serde::Serialize)]
 pub enum CursorMovementMode {
     Relative,
     Absolute,

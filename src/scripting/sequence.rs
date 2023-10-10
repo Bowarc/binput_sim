@@ -1,8 +1,12 @@
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
+// #[serde(from = "Vec<super::Action>")]
 pub struct ActionSequence {
     seq: Vec<super::Action>,
+    #[serde(skip_serializing, skip_deserializing)]
     cursor: usize,
+    #[serde(skip_serializing, skip_deserializing)]
     requested_stop: bool,
+    #[serde(skip_serializing, skip_deserializing)]
     currently_waiting: bool,
 }
 
@@ -81,7 +85,7 @@ impl ActionSequence {
                     super::utils::release_all_mouse_btns();
                     self.requested_stop = true
                 }
-                super::Action::KeySequence(s) => inputbot::KeySequence(&s).send(),
+                super::Action::KeySequence(s) => inputbot::KeySequence(s).send(),
             }
         }
 
@@ -92,5 +96,11 @@ impl ActionSequence {
         }
 
         Ok(())
+    }
+}
+
+impl From<Vec<super::Action>> for ActionSequence {
+    fn from(value: Vec<super::Action>) -> Self {
+        ActionSequence::new(value)
     }
 }

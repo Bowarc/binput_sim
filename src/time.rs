@@ -1,4 +1,4 @@
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 pub enum TimeUnit {
     Nanoseconds,
     Microseconds,
@@ -6,8 +6,9 @@ pub enum TimeUnit {
     Seconds,
 }
 
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Debug, Clone, Copy, serde::Deserialize, serde::Serialize)]
 pub struct Delay {
+    #[serde(skip_serializing, skip_deserializing)]
     waiting_instant: Option<std::time::Instant>,
 
     pub v: f64,
@@ -51,9 +52,19 @@ impl Delay {
     }
 }
 
+impl From<(f64, TimeUnit)> for Delay {
+    fn from(value: (f64, TimeUnit)) -> Self {
+        Delay {
+            waiting_instant: None,
+            v: value.0,
+            unit: value.1,
+        }
+    }
+}
+
 impl std::fmt::Display for Delay {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", display_duration(self.as_std_duration(), ""))
+        write!(f, "{}", display_duration(self.as_std_duration()))
     }
 }
 
@@ -110,23 +121,94 @@ impl std::fmt::Display for TimeUnit {
     }
 }
 
-pub fn display_duration(d: std::time::Duration, separator: &str) -> String {
-    let mut value: f64 = d.as_nanos() as f64;
-    // debug!("d:{:?}", d);
-    // if nanos == 0 {}
-    // debug!("nbr: {}", nbr);
+#[derive(Debug, Clone)]
+/// Measure the time between the .start and .stop functions, can be read later
+pub enum Stopwatch {
+    // Ps i used an enum as it best fits the use to me, + it's globally smaller as it re-uses the memory if the other state for the curent one
+    Running {
+        start_time: std::time::Instant,
+    },
+    Paused {
+        paused_since: std::time::Instant,
+        runtime: std::time::Duration,
+    },
+}
 
-    let units: &[&str] = &["ns", "µs", "ms", "s"];
-    let mut name_index = 0;
+impl Default for Stopwatch {
+    fn default() -> Self {
+        Self::Paused {
+            paused_since: std::time::Instant::now(),
+            runtime: std::time::Duration::from_secs(0),
+        }
+    }
+}
 
-    while value >= 1_000. {
-        if name_index < units.len() - 1 {
-            value /= 1_000.;
-            name_index += 1
+impl Stopwatch {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn start_new() -> Self {
+        Self::Running {
+            start_time: std::time::Instant::now(),
+        }
+    }
+    pub fn is_running(&self) -> bool {
+        matches![self, Stopwatch::Running { .. }]
+    }
+    pub fn is_stopped(&self) -> bool {
+        !self.is_running()
+    }
+    pub fn start(&mut self) {
+        *self = Stopwatch::start_new();
+    }
+    pub fn stop(&mut self) {
+        if let Self::Running { start_time } = self {
+            *self = Stopwatch::Paused {
+                paused_since: std::time::Instant::now(),
+                runtime: start_time.elapsed(),
+            }
+        }
+    }
+    pub fn read(&self) -> std::time::Duration {
+        match self {
+            Stopwatch::Running { start_time } => start_time.elapsed(),
+            Stopwatch::Paused { runtime, .. } => *runtime,
+        }
+    }
+}
+
+impl std::fmt::Display for Stopwatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", display_duration(self.read()))
+    }
+}
+
+pub fn display_duration(duration: std::time::Duration) -> String {
+    let secs = duration.as_secs();
+    let nanos = duration.subsec_nanos();
+
+    if secs == 0 {
+        if nanos < 1_000 {
+            return format!("{}ns", nanos);
+        } else if nanos < 1_000_000 {
+            return format!("{:.2}µs", nanos as f64 / 1_000.0);
         } else {
-            break;
+            return format!("{:.2}ms", nanos as f64 / 1_000_000.0);
         }
     }
 
-    format!("{:.2}{}{}", value, separator, units[name_index])
+    if secs < 60 {
+        format!("{secs}s")
+    } else if secs < 3_600 {
+        let minutes = secs / 60;
+        let seconds = secs % 60;
+        format!("{minutes}m {seconds}s")
+    } else if secs < 86_400 {
+        let hours = secs / 3_600;
+        let minutes = (secs % 3_600) / 60;
+        format!("{hours}h {minutes}m")
+    } else {
+        let days = secs / 86_400;
+        format!("{days}days")
+    }
 }

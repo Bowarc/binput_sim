@@ -209,7 +209,69 @@ impl Tab {
             });
         }
 
+        self.draw_save_load_menu(ui);
+
         self.draw_current_sequence(ui);
+    }
+
+    fn draw_save_load_menu(&mut self, ui: &mut eframe::egui::Ui) {
+        let button_text_size = 22.;
+
+        ui.vertical(|ui| {
+            ui.add_space(100.);
+            if ui
+                .button(eframe::egui::RichText::new("Load").size(button_text_size))
+                .clicked()
+            {
+                let dll_file = rfd::AsyncFileDialog::new()
+                    .add_filter("Sequence file", &["ron"])
+                    .set_directory(std::env::current_dir().unwrap())
+                    .pick_file();
+
+                let path_opt = futures::executor::block_on(dll_file);
+
+                if let Some(p) = path_opt {
+                    let string_res =
+                        crate::file::load(p.path().as_os_str().to_str().unwrap().to_string());
+
+                    match string_res {
+                        Ok(string) => {
+                            match ron::de::from_str::<crate::scripting::ActionSequence>(&string) {
+                                Ok(seq) => self.action_sequence = seq,
+                                Err(e) => {
+                                    panic!("{}", e)
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            panic!("{}", e)
+                        }
+                    }
+                }
+            }
+
+            ui.add_space(5.);
+
+            if ui
+                .button(eframe::egui::RichText::new("Save").size(button_text_size))
+                .clicked()
+            {
+                let pretty_config = ron::ser::PrettyConfig::new();
+
+                let string_res: Result<String, ron::error::Error> =
+                    ron::ser::to_string_pretty(&self.action_sequence, pretty_config);
+
+                if let Ok(string) = string_res {
+                    match crate::file::save(&format!("sequence_{tab}.ron", tab = self.name), string)
+                    {
+                        Ok(_) => {}
+                        Err(e) => {
+                            panic!("{e}")
+                        }
+                    }
+                }
+            }
+        });
     }
 
     fn draw_current_sequence(&mut self, ui: &mut eframe::egui::Ui) {
