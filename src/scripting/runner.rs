@@ -112,6 +112,12 @@ impl RunnerHandle {
     pub fn is_runner_running(&self) -> bool {
         self.key_sequence_running
     }
+
+    pub fn request_stop(&self) {
+        if let Err(e) = self.thread_channel.send(RunnerMessage::Goodbye) {
+            error!("Error while stopping runner {}: {e}", self.name)
+        }
+    }
 }
 
 impl RunnerThread {
@@ -143,6 +149,9 @@ impl RunnerThread {
                         }
                     }
                     RunnerMessage::StopSequence => self.stop_current_sequence(),
+                    RunnerMessage::Goodbye => {
+                        self.requested_stop = true;
+                    }
                     _ => warn!("Unhandled message: {msg:?}"),
                 }
             }
@@ -245,7 +254,8 @@ impl RunnerThread {
     }
 
     fn exit(&mut self) {
-        self.delete_current_sequence();
+        self.current_sequence = None;
+        self.sequence_running = false;
         let _ = self.channel.send(RunnerMessage::Goodbye);
         debug!("Exiting thread {}", self.name);
     }

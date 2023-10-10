@@ -122,25 +122,82 @@ impl Ui {
         });
     }
     fn draw_tabs(&mut self, ui: &mut eframe::egui::Ui, rect: eframe::egui::Rect) {
-        utils::centerer(ui, |ui| {
-            for (index, tab) in self.tabs.iter().enumerate() {
-                if ui
-                    .button(
-                        eframe::egui::RichText::new(tab.name())
-                            .size(20.)
-                            .color(if index == self.current_tab_index {
-                                eframe::egui::Color32::GREEN
-                            } else {
-                                eframe::egui::Color32::WHITE
-                            })
-                            .strong(),
-                    )
-                    .clicked()
-                {
-                    self.current_tab_index = index
-                }
+        ui.horizontal(|ui| {
+            ui.add_space(10.);
+            if ui
+                .button(eframe::egui::RichText::new("+").size(20.))
+                .clicked()
+            {
+                self.tabs
+                    .push(tab::Tab::new(format!("Tab{}", self.tabs.len() + 1)))
             }
+            utils::centerer(ui, |ui| {
+                ui.style_mut().spacing.item_spacing.x = 0.;
+
+                let mut index = 0;
+
+                while index < self.tabs.len() {
+                    let tab = self.tabs.get(index).unwrap();
+                    let mut need_delete = false;
+                    if ui
+                        .add(
+                            eframe::egui::Button::new(
+                                eframe::egui::RichText::new(tab.name())
+                                    .size(20.)
+                                    .color(if tab.runner_running() {
+                                        eframe::egui::Color32::GREEN
+                                    } else {
+                                        eframe::egui::Color32::WHITE
+                                    })
+                                    .strong(),
+                            )
+                            .frame(index == self.current_tab_index),
+                        )
+                        .clicked()
+                    {
+                        self.current_tab_index = index
+                    }
+
+                    if self.tabs.len() > 1 {
+                        ui.vertical(|ui| {
+                            if ui
+                                .add(
+                                    eframe::egui::Button::new(
+                                        eframe::egui::RichText::new("X")
+                                            .size(10.)
+                                            .color(eframe::egui::Color32::BLACK),
+                                    )
+                                    .frame(false)
+                                    // .small()
+                                    .fill(eframe::egui::Color32::RED),
+                                )
+                                .clicked()
+                            {
+                                debug!("Removing tab {index}");
+                                need_delete = true
+                            }
+                        });
+                    }
+
+                    ui.add_space(10.);
+
+                    if need_delete {
+                        tab.exit();
+
+                        self.tabs.remove(index);
+                        if !index < self.tabs.len() {
+                            index = self.tabs.len() - 1;
+                        }
+                    } else {
+                        index += 1
+                    }
+                }
+            });
         });
+
+        if self.current_tab_index >= self.tabs.len() {
+            self.current_tab_index = self.tabs.len() - 1
+        }
 
         let current_tab = self.tabs.get_mut(self.current_tab_index).unwrap();
 

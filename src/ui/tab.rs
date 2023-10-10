@@ -55,6 +55,10 @@ impl Tab {
         self.runner_handle.is_runner_running()
     }
 
+    pub fn exit(&self) {
+        self.runner_handle.request_stop()
+    }
+
     fn update_runner(&mut self) {
         loop {
             match self.runner_handle.try_recv() {
@@ -96,6 +100,26 @@ impl Tab {
 
     pub fn draw(&mut self, ui: &mut eframe::egui::Ui) {
         ui.separator();
+        ui.horizontal(|ui| {
+            ui.label("Tab: name: ");
+            ui.text_edit_singleline(&mut self.name);
+
+            ui.with_layout(
+                eframe::egui::Layout::right_to_left(eframe::egui::Align::TOP),
+                |ui| {
+                    ui.horizontal(|ui| {
+                        ui.add_space(5.);
+                        ui.label(if self.runner_handle.is_runner_running() {
+                            eframe::egui::RichText::new("Running")
+                                .color(eframe::egui::Color32::GREEN)
+                        } else {
+                            eframe::egui::RichText::new("Stopped").color(eframe::egui::Color32::RED)
+                        });
+                        ui.label("Runner state: ");
+                    });
+                },
+            )
+        });
 
         /*
             vertical,
@@ -105,15 +129,6 @@ impl Tab {
             spacer with size of width -  truc a gauche size - list size
             liste
         */
-
-        ui.horizontal(|ui| {
-            ui.label("Runner state: ");
-            ui.label(if self.runner_handle.is_runner_running() {
-                eframe::egui::RichText::new("Running").color(eframe::egui::Color32::GREEN)
-            } else {
-                eframe::egui::RichText::new("Stopped").color(eframe::egui::Color32::RED)
-            })
-        });
 
         ui.add_space(20.);
 
@@ -215,10 +230,11 @@ impl Tab {
     }
 
     fn draw_save_load_menu(&mut self, ui: &mut eframe::egui::Ui) {
-        let button_text_size = 22.;
+        let button_text_size = 17.;
+        ui.add_space(100.);
 
-        ui.vertical(|ui| {
-            ui.add_space(100.);
+        ui.label("File:");
+        ui.horizontal(|ui| {
             if ui
                 .button(eframe::egui::RichText::new("Load").size(button_text_size))
                 .clicked()
@@ -250,7 +266,7 @@ impl Tab {
                 }
             }
 
-            ui.add_space(5.);
+            ui.add_space(2.);
 
             if ui
                 .button(eframe::egui::RichText::new("Save").size(button_text_size))
