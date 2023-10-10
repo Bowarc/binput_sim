@@ -1,3 +1,7 @@
+#![cfg_attr(
+    all(target_os = "windows", not(debug_assertions)),
+    windows_subsystem = "windows"
+)]
 #[macro_use]
 extern crate log;
 
@@ -18,7 +22,7 @@ fn main() {
         vsync: true,
         decorated: false,
         transparent: true,
-        always_on_top: true,
+        always_on_top: false,
         default_theme: eframe::Theme::Dark,
         // icon_data: Some(
         //     eframe::IconData::try_from_png_bytes(include_bytes!(

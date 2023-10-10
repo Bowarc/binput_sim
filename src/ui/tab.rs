@@ -5,7 +5,6 @@ pub struct Tab {
     name: String,
     action_sequence: crate::scripting::ActionSequence,
     runner_handle: crate::scripting::runner::RunnerHandle,
-    test_str: String,
     current_action_index: usize,
 }
 
@@ -42,7 +41,6 @@ impl Tab {
         //     .unwrap();
 
         Self {
-            test_str: name.clone(),
             current_action_index: 0,
             runner_handle: runner,
             name,
@@ -104,7 +102,7 @@ impl Tab {
             horizontal
             truc a gauche
             vertical
-            spacer with size of width -  truc a gauche size - liste size
+            spacer with size of width -  truc a gauche size - list size
             liste
         */
 
@@ -143,19 +141,19 @@ impl Tab {
             ui.add_space(10.);
 
             ui.horizontal(|ui| {
-                if ui.button("Keyboard press").clicked() {
+                if ui.button("Mouse press").clicked() {
                     self.action_sequence
                         .actions()
-                        .push(crate::scripting::Action::KeyPress(
-                            inputbot::KeybdKey::SpaceKey,
+                        .push(crate::scripting::Action::ButtonPress(
+                            inputbot::MouseButton::LeftButton,
                         ));
                 }
 
-                if ui.button("Keyboard release").clicked() {
+                if ui.button("Mouse release").clicked() {
                     self.action_sequence
                         .actions()
-                        .push(crate::scripting::Action::KeyRelease(
-                            inputbot::KeybdKey::SpaceKey,
+                        .push(crate::scripting::Action::ButtonPress(
+                            inputbot::MouseButton::LeftButton,
                         ));
                 }
             });
@@ -391,8 +389,7 @@ impl Tab {
                         if last_width.is_none() {
                             width * 2.
                         } else {
-                            width + 10.
-                            // width
+                            width + 30.
                         },
                     )
                 });
