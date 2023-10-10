@@ -28,16 +28,14 @@ fn main() {
         transparent: true,
         always_on_top: false,
         default_theme: eframe::Theme::Dark,
-        // icon_data: Some(
-        //     eframe::IconData::try_from_png_bytes(include_bytes!(
-        //         "..\\assets\\icons8-robot-64_w.png"
-        //     ))
-        //     .unwrap(),
-        // ),
+        icon_data: Some(
+            eframe::IconData::try_from_png_bytes(include_bytes!("..\\assets\\generated.png"))
+                .unwrap(),
+        ),
         ..Default::default()
     };
     eframe::run_native(
-        "My egui App",
+        "Bwrc input sim",
         options,
         Box::new(|cc| {
             use eframe::egui::{
